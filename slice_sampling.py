@@ -36,6 +36,13 @@ def sliceSample(distribution, steps, nrSamples, nrBurnSamples, init):
   return samples
 
 def getOneSample(distribution, currentSample, steps):
+
+  def getDistWithAddedValueInDimension(sample, dimension, value):
+    res = sample.copy()
+    res[dimension] += value
+    return distribution(res)
+
+
   nrDimensions = len(currentSample)
   # Sample the auxiliary variable y
   y = np.random.uniform(0, distribution(currentSample))
@@ -54,10 +61,10 @@ def getOneSample(distribution, currentSample, steps):
     sliceRightBoundary = + (1.0 - r) * dimensionStep
 
     # Extend the slice as long as we can
-    while distribution(sliceLeftBoundary) > y:
+    while getDistWithAddedValueInDimension(currentSample, dim, sliceLeftBoundary) > y:
       sliceLeftBoundary = sliceLeftBoundary - dimensionStep
 
-    while distribution(sliceRightBoundary) > y:
+    while getDistWithAddedValueInDimension(currentSample, dim, sliceRightBoundary) > y:
       sliceRightBoundary = sliceRightBoundary + dimensionStep
 
     # Now try to sample from our estimate of the slice
@@ -95,16 +102,18 @@ def getOneSample(distribution, currentSample, steps):
 
 def testUnivariateGaussian(mean, std):
   probDist = lambda x: norm.pdf(x, loc=mean, scale=std)
-  samples = sliceSample(probDist, np.array([0.005]), 500, 100, np.array([0.0]))
+  samples = sliceSample(probDist, np.array([0.01]), 500, 100, np.array([0.0]))
 
   samples = np.array(samples)
   print samples
 
   # Fit the normal distribution
-  mu, std = norm.fit(samples)
+  estimatedMu, estimatedStd = norm.fit(samples)
 
-  print "mean", mu
-  print "std", std
+  print "actual mean\n", mean
+  print "estimated mean\n", estimatedMu
+  print "estimated covariance\n", estimatedStd
+  print "actual covariance\n", std
 
   samples = np.array(samples)
   # Plot the histogram.
@@ -113,33 +122,34 @@ def testUnivariateGaussian(mean, std):
   # Plot the PDF.
   xmin, xmax = plt.xlim()
   x = np.linspace(xmin, xmax, 100)
-  p = norm.pdf(x, mu, std)
+  p = norm.pdf(x, estimatedMu, estimatedStd)
   plt.plot(x, p, 'k', linewidth=2)
-  title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+  title = "Fit results: mu = %.2f,  std = %.2f" % (estimatedMu, estimatedStd)
   plt.title(title)
 
   plt.show()
 
 def testMultiVariateGaussian(mean, cov):
   probDist = lambda x: multivariate_normal.pdf(x, mean=mean, cov=cov)
-  samples = sliceSample(probDist, np.array([0.05] * len(mean)), 500, 1000, np.array([0.0] * len(mean)))
+  samples = sliceSample(probDist, np.array([0.05] * len(mean)), 5000, 500, np.array([0.0] * len(mean)))
   samples = np.array(samples)
 
   fig = plt.figure()
   plt.plot(samples[:, 0], samples[:, 1], 'r:', label=u'samples')
   plt.show()
 
-  print samples.shape
-  print samples.mean(axis=0)
-  print np.cov(samples.T, bias=1)
+  print "actual mean", mean
+  print "estimated mean", samples.mean(axis=0)
+  print "estimated covariance", np.cov(samples.T, bias=1)
+  print "actual covariance", cov
 
 
 def main():
   testUnivariateGaussian(0.0, 1.0)
-  testUnivariateGaussian(0.0, 0.5)
-  testUnivariateGaussian(-1.0, 0.5)
-  testUnivariateGaussian(-2.0, 1.0)
-  testUnivariateGaussian(-2.0, 2.0)
+  # testUnivariateGaussian(0.0, 0.5)
+  # testUnivariateGaussian(-1.0, 0.5)
+  # testUnivariateGaussian(-2.0, 1.0)
+  # testUnivariateGaussian(-2.0, 2.0)
 
   testMultiVariateGaussian(np.array([0.0, 0.0]), np.identity(2))
 
