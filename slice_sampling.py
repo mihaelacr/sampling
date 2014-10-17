@@ -39,10 +39,6 @@ def getOneSample(distribution, currentSample, steps):
   nrDimensions = len(currentSample)
   # Sample the auxiliary variable y
   y = np.random.uniform(0, distribution(currentSample))
-  print "y", y
-
-  sliceLeftBoundary = np.array(currentSample)
-  sliceRightBoundary = np.array(currentSample)
 
   # For each dimension do the sampling step
   for dim in xrange(nrDimensions):
@@ -50,63 +46,52 @@ def getOneSample(distribution, currentSample, steps):
     # We start by defining the low and right boundaries
 
     # The step allowed for this dimension (specified by caller)
+    print "currentSample", currentSample
     dimensionStep = steps[dim]
 
     r = np.random.uniform(low=0.0, high=1.0)
-    print "r", r
-    sliceLeftBoundary[dim]  = currentSample[dim] - r * dimensionStep
-    sliceRightBoundary[dim] = currentSample[dim] + (1.0 - r) * dimensionStep
 
-    print "sliceLeftBoundary", sliceLeftBoundary
-    print "sliceRightBoundary", sliceRightBoundary
+    sliceLeftBoundary  = - r * dimensionStep
+    sliceRightBoundary = + (1.0 - r) * dimensionStep
 
     # Extend the slice as long as we can
     while distribution(sliceLeftBoundary) > y:
-      sliceLeftBoundary[dim] = sliceLeftBoundary[dim] - dimensionStep
+      sliceLeftBoundary = sliceLeftBoundary - dimensionStep
 
     while distribution(sliceRightBoundary) > y:
-      sliceRightBoundary[dim] = sliceRightBoundary[dim] + dimensionStep
-
-    sample = np.array(currentSample)
-
-    print "currentSample", currentSample
-    print "sliceLeftBoundary", sliceLeftBoundary
-    print "sliceRightBoundary", sliceRightBoundary
-
+      sliceRightBoundary = sliceRightBoundary + dimensionStep
 
     # Now try to sample from our estimate of the slice
     # if the value is good, end the loop, we have this dimension for our final sample
     # if not,  reduce the slice
     while True:
       # get a uniform sample for the current dimension
-      sampleComponent = np.random.uniform(low=0, high=sliceRightBoundary[dim] - sliceLeftBoundary[dim])  + sliceLeftBoundary[dim]
-      print "sampleComponent", sampleComponent
-      sample[dim] = sampleComponent
-      print "sample", sample
-      print "distribution(sample)", distribution(sample)
-      print "currentSample", currentSample
+      sampleComponent = np.random.uniform(low=0, high=sliceRightBoundary - sliceLeftBoundary)  + sliceLeftBoundary
+
+      sample = currentSample.copy()
+      sample[dim] = sampleComponent + currentSample[dim]
+
       # if the sample is not one what we want to keep
       # update the slices
       if distribution(sample) < y:
         # Decide if we shall reduce the slice from the left or right
-        if sample[dim] > currentSample[dim]:
+        if sampleComponent > 0:
           # Reduce from the right
-          sliceRightBoundary[dim] = sample[dim]
+          sliceRightBoundary = 0
 
-        elif sample[dim] < currentSample[dim]:
+        elif sampleComponent < 0:
           # Reduce from the left
-          sliceLeftBoundary[dim] = sample[dim]
+          sliceLeftBoundary = 0
         else:
           raise Exception("We have reached the already accepted sample and rejected it.")
       else:
-        # check that the sample has only changed in this dimension
-        assert equalInAllIndicesButOne(currentSample, sample, dim)
         # we have established the value on this dimension for our sample
-        currentSample = np.array(sample)
+        # print "sampleComponent", sampleComponent
+        currentSample = sample
         break
 
   # Once you are done looping trough the dimensions, return the new sample
-  return currentSample
+  return currentSample.copy()
 
 
 def equalInAllIndicesButOne(array1, array2, index):
@@ -117,8 +102,11 @@ def equalInAllIndicesButOne(array1, array2, index):
   return True
 
 def testUnivariateGaussian(mean, std):
-  probDist = lambda x: norm.pdf(x, mean=mean, cov=std**2)
-  samples = sliceSample(probDist, np.array([0.01]), 500, 100, np.array([0.0]))
+  probDist = lambda x: norm.pdf(x, loc=mean, scale=std)
+  samples = sliceSample(probDist, np.array([0.005]), 500, 100, np.array([0.0]))
+
+  samples = np.array(samples)
+  print samples
 
   # Fit the normal distribution
   mu, std = norm.fit(samples)
@@ -141,7 +129,6 @@ def testUnivariateGaussian(mean, std):
   plt.show()
 
 def testMultiVariateGaussian(mean, cov):
-
   probDist = lambda x: multivariate_normal.pdf(x, mean=mean, cov=cov)
   samples = sliceSample(probDist, np.array([0.05] * len(mean)), 500, 100, np.array([0.0] * len(mean)))
   samples = np.array(samples)
@@ -156,13 +143,13 @@ def testMultiVariateGaussian(mean, cov):
 
 
 def main():
-  # testUnivariateGaussian(0.0, 1.0)
+  testUnivariateGaussian(0.0, 1.0)
   # testUnivariateGaussian(0.0, 0.5)
   # testUnivariateGaussian(-1.0, 0.5)
   # testUnivariateGaussian(-2.0, 1.0)
   # testUnivariateGaussian(-2.0, 2.0)
 
-  testMultiVariateGaussian(np.array([0.0, 0.0]), np.identity(2))
+  # testMultiVariateGaussian(np.array([0.0, 0.0]), np.identity(2))
 
 if __name__ == '__main__':
   main()
