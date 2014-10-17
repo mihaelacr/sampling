@@ -26,7 +26,7 @@ def sliceSample(distribution, steps, nrSamples, nrBurnSamples, init):
   # Get the samples that we need
   for sampleNr in xrange(nrSamples + nrBurnSamples):
     currentSample = getOneSample(distribution, currentSample, steps)
-    print currentSample
+    print "currentSample", currentSample
 
     # Do not record the burn samples, we just want to heat up the markov chain
     # with them
@@ -46,7 +46,6 @@ def getOneSample(distribution, currentSample, steps):
     # We start by defining the low and right boundaries
 
     # The step allowed for this dimension (specified by caller)
-    print "currentSample", currentSample
     dimensionStep = steps[dim]
 
     r = np.random.uniform(low=0.0, high=1.0)
@@ -94,13 +93,6 @@ def getOneSample(distribution, currentSample, steps):
   return currentSample.copy()
 
 
-def equalInAllIndicesButOne(array1, array2, index):
-  for i in xrange(len(array1)):
-    if i != index and array2[i] != array2[i]:
-      return False
-
-  return True
-
 def testUnivariateGaussian(mean, std):
   probDist = lambda x: norm.pdf(x, loc=mean, scale=std)
   samples = sliceSample(probDist, np.array([0.005]), 500, 100, np.array([0.0]))
@@ -130,7 +122,7 @@ def testUnivariateGaussian(mean, std):
 
 def testMultiVariateGaussian(mean, cov):
   probDist = lambda x: multivariate_normal.pdf(x, mean=mean, cov=cov)
-  samples = sliceSample(probDist, np.array([0.05] * len(mean)), 500, 100, np.array([0.0] * len(mean)))
+  samples = sliceSample(probDist, np.array([0.05] * len(mean)), 500, 1000, np.array([0.0] * len(mean)))
   samples = np.array(samples)
 
   fig = plt.figure()
@@ -144,12 +136,12 @@ def testMultiVariateGaussian(mean, cov):
 
 def main():
   testUnivariateGaussian(0.0, 1.0)
-  # testUnivariateGaussian(0.0, 0.5)
-  # testUnivariateGaussian(-1.0, 0.5)
-  # testUnivariateGaussian(-2.0, 1.0)
-  # testUnivariateGaussian(-2.0, 2.0)
+  testUnivariateGaussian(0.0, 0.5)
+  testUnivariateGaussian(-1.0, 0.5)
+  testUnivariateGaussian(-2.0, 1.0)
+  testUnivariateGaussian(-2.0, 2.0)
 
-  # testMultiVariateGaussian(np.array([0.0, 0.0]), np.identity(2))
+  testMultiVariateGaussian(np.array([0.0, 0.0]), np.identity(2))
 
 if __name__ == '__main__':
   main()
