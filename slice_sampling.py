@@ -1,8 +1,15 @@
 """Implementation of multi variate slice sampling. For details please see
 the chapter on sampling in Bayesian reasoning and Machine learning.
+
+For an overview of how to extend slice sampling to the multivariate case, look at
+http://en.wikipedia.org/wiki/Slice_sampling#Multivariate_Methods
 """
 
 import numpy as np
+from scipy.stats import norm
+from scipy.stats import multivariate_normal
+import matplotlib.pyplot as plt
+
 
 """
 distribution: callable, a function proportional to the probability distribution we want to sample
@@ -61,8 +68,8 @@ def getOneSample(distribution, currentSample, steps):
       sliceRightBoundary[dim] = sliceRightBoundary[dim] + dimensionStep
 
     sample = np.array(currentSample)
-    print "currentSample", currentSample
 
+    print "currentSample", currentSample
     print "sliceLeftBoundary", sliceLeftBoundary
     print "sliceRightBoundary", sliceRightBoundary
 
@@ -84,20 +91,18 @@ def getOneSample(distribution, currentSample, steps):
         # Decide if we shall reduce the slice from the left or right
         if sample[dim] > currentSample[dim]:
           # Reduce from the right
-          print "in if"
           sliceRightBoundary[dim] = sample[dim]
 
         elif sample[dim] < currentSample[dim]:
-          print "in elif"
           # Reduce from the left
           sliceLeftBoundary[dim] = sample[dim]
         else:
           raise Exception("We have reached the already accepted sample and rejected it.")
       else:
-        # we have established the value on this dimension for our sample
-        currentSample = np.array(sample)
         # check that the sample has only changed in this dimension
         assert equalInAllIndicesButOne(currentSample, sample, dim)
+        # we have established the value on this dimension for our sample
+        currentSample = np.array(sample)
         break
 
   # Once you are done looping trough the dimensions, return the new sample
@@ -111,16 +116,53 @@ def equalInAllIndicesButOne(array1, array2, index):
 
   return True
 
+def testUnivariateGaussian(mean, std):
+  probDist = lambda x: norm.pdf(x, mean=mean, cov=std**2)
+  samples = sliceSample(probDist, np.array([0.01]), 500, 100, np.array([0.0]))
+
+  # Fit the normal distribution
+  mu, std = norm.fit(samples)
+
+  print "mean", mu
+  print "std", std
+
+  samples = np.array(samples)
+  # Plot the histogram.
+  plt.hist(samples, bins=25, normed=True, color='g')
+
+  # Plot the PDF.
+  xmin, xmax = plt.xlim()
+  x = np.linspace(xmin, xmax, 100)
+  p = norm.pdf(x, mu, std)
+  plt.plot(x, p, 'k', linewidth=2)
+  title = "Fit results: mu = %.2f,  std = %.2f" % (mu, std)
+  plt.title(title)
+
+  plt.show()
+
+def testMultiVariateGaussian(mean, cov):
+
+  probDist = lambda x: multivariate_normal.pdf(x, mean=mean, cov=cov)
+  samples = sliceSample(probDist, np.array([0.05] * len(mean)), 500, 100, np.array([0.0] * len(mean)))
+  samples = np.array(samples)
+
+  fig = plt.figure()
+  plt.plot(samples[:, 0], samples[:, 1], 'r:', label=u'samples')
+  plt.show()
+
+  print samples.shape
+  print samples.mean(axis=0)
+  print np.cov(samples.T, bias=1)
+
+
 def main():
-  def pdf(x, mean=0, std=1):
-    return 1. / (np.sqrt(2 * np.pi) * std) * np.exp( - (x - mean)** 2 / (2 * std **2))
+  # testUnivariateGaussian(0.0, 1.0)
+  # testUnivariateGaussian(0.0, 0.5)
+  # testUnivariateGaussian(-1.0, 0.5)
+  # testUnivariateGaussian(-2.0, 1.0)
+  # testUnivariateGaussian(-2.0, 2.0)
 
-  samples = sliceSample(pdf, np.array([0.01]), 500, 100, np.array([0.0]))
-  print "mean"
-  print np.array(samples).mean()
-
-  # http://stackoverflow.com/questions/20011122/fitting-a-normal-distribution-to-1d-data
-  # do this tomorrow
+  testMultiVariateGaussian(np.array([0.0, 0.0]), np.identity(2))
 
 if __name__ == '__main__':
   main()
